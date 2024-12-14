@@ -88,7 +88,7 @@ public class Member extends BaseEntity {
     private boolean isNewUser = false;
 
 
-    //==연관관계 메서드==// - 로직상 양쪽을 다 구현
+    //==연관관계 메서드==// - 로직상 양쪽을 다 구현.
     public void setMemberRating(Double changeRating) {
         this.rating += changeRating;
     }
