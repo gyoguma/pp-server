@@ -5,9 +5,12 @@ import com.pp.apipayload.ApiResponse;
 import com.pp.config.auth.TokenService;
 import com.pp.converter.MemberConverter;
 import com.pp.domain.Member;
+import com.pp.domain.Product;
 import com.pp.service.member.MemberCommandService;
 import com.pp.service.member.MemberQueryService;
+import com.pp.service.product.ProductQueryService;
 import com.pp.validation.annotation.ExistMember;
+import com.pp.validation.annotation.ExistProduct;
 import com.pp.web.dto.member.MemberResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -33,12 +36,28 @@ import java.util.Map;
 @RequiredArgsConstructor
 @RequestMapping("/members")
 @Validated
-public class MemberRestController { // 구현 끝
+public class MemberRestController {
 
     private final MemberCommandService memberCommandService;
     private final MemberQueryService memberQueryService;
     private final TokenService tokenService;
+    private final ProductQueryService productQueryService;
 
+    @GetMapping("/products/{productId}")
+    @Operation(summary = "상품id로 사용자 정보 조회", description = "상품id로 사용자 정보 조회.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "COMMON200",description = "OK, 성공"),
+    })
+    @Parameters({
+            @Parameter(name = "productId", description = "조회할 상품의 아이디, path variable 입니다.")
+    })
+    public ResponseEntity<?> getMembersByProduct(@ExistProduct @PathVariable Long productId)  {
+
+        Product product = productQueryService.getProduct(productId);
+        Map<String, Object> response = new HashMap<>();
+        response.put("userId", product.getMember().getId());
+        return ResponseEntity.ok(response);
+    }
 
     @GetMapping("/byToken")
     @Operation(summary = "토큰으로 유저 정보 얻기 이메일", description = "관리자 페이지 조회하는 API입니다.")
