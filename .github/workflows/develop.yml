@@ -1,0 +1,108 @@
+# github repository actions 페이지에 나타날 이름
+name: CI/CD using github actions & docker
+
+# event trigger
+on:
+  pull_request:
+    branches: [ "develop" ]
+  push:
+    branches: [ "develop" ]
+  workflow_dispatch:
+
+jobs:
+  CI-CD:
+    # Operating system - ubuntu-latest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      # Checkout - 가상 머신에 체크아웃(저장소 코드 체크아웃) - 워크플로에서 리포지토리의 코드를 가져오는 기본 액션
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # JDK setting - github actions에서 사용할 JDK 설정 (프로젝트나 AWS의 java 버전과 달라도 무방) - JDK 21 설정
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'corretto'    # AWS와 관련되면 corretto, 다른 환경에서는 termurin 추천
+
+      # gradle caching - 빌드 시간 향상
+      - name: Gradle Caching
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # gradle build - 테스트 없이 gradle 빌드
+      - name: Build with Gradle
+        run: |
+          chmod +x gradlew
+          ./gradlew clean build -x test
+        shell: bash
+
+      # Set up Docker Buildx - Docker Buildx 설치(도커 설치가 아님)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2.9.1
+
+      - name: Docker Image Build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          dockerfile: Dockerfile
+          push: false
+          tags: ${{ secrets.DOCKER_USERNAME }}/market:latest
+
+      # Log in to Docker Hub - Docker Hub 로그인
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      # Docker image 푸시
+      - name: Docker Push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          dockerfile: Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/market:latest
+
+      ## deploy to develop
+      - name: Deploy to dev
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }} # EC2 퍼블릭 IPv4 DNS
+          username: ${{ secrets.EC2_USERNAME }} # ec-user
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          port: 22
+          script: |
+            # Docker 네트워크가 존재하지 않으면 생성
+            if [ -z "$(sudo docker network ls --filter name=${{ secrets.DOCKER_NETWORK }} -q)" ]; then
+            sudo docker network create ${{ secrets.DOCKER_NETWORK }}
+            fi
+            
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/market:latest
+            
+            # 기존 컨테이너 중지 및 제거
+            EXISTING_CONTAINER_ID=$(sudo docker ps -q -f "publish=8080" -f "status=running") # 현재 실행 중이며 8080 포트를 사용하는 컨테이너의 ID
+            if [ ! -z "$EXISTING_CONTAINER_ID" ]; then
+            sudo docker stop $EXISTING_CONTAINER_ID
+            sudo docker rm $EXISTING_CONTAINER_ID
+            fi
+
+            EXISTING_CONTAINER_ID=$(sudo docker ps -q -f "publish=8080" -f "status=exited") # 8080 포트를 사용하지만 중지된 컨테이너의 ID
+            if [ ! -z "$EXISTING_CONTAINER_ID" ]; then
+            sudo docker rm $EXISTING_CONTAINER_ID
+            fi
+
+            # 상태가 exited인 모든 컨테이너를 제거
+            sudo docker rm $(sudo docker ps --filter 'status=exited' -a -q)
+            sudo docker run -d --name market -p 8080:8080 --net ${{secrets.DOCKER_NETWORK}} -e TZ=Asia/Seoul ${{ secrets.DOCKER_USERNAME }}/market:latest
+            sudo docker image prune -a -f
