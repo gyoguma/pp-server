@@ -35,11 +35,11 @@ import java.util.List;
 public class ImageCommandServiceImpl implements ImageCommandService {
 
 
-
     private final ImageRepository imageRepository;
     private final ProductRepository productRepository;
     private final AmazonImageUploadService amazonImageUploadService;
     private final MemberRepository memberRepository;
+
     @Override
     @Transactional
     //productId와 이미지들 기반으로 만듬
@@ -48,7 +48,6 @@ public class ImageCommandServiceImpl implements ImageCommandService {
         // 상품 조회
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-
 
 
         List<Image> savedImages = new ArrayList<>();
@@ -60,7 +59,7 @@ public class ImageCommandServiceImpl implements ImageCommandService {
             //이미지 판별 서비스
             try {
                 Metadata originalMetadata = ImageMetadataReader.readMetadata(file.getInputStream());
-                Map<?,?> processedMetadata =  extractUserMetadata(originalMetadata);
+                Map<?, ?> processedMetadata = extractUserMetadata(originalMetadata);
 
                 Object capturedDate = processedMetadata.get("DateTimeOriginal"); //찍은 날짜 추출
                 Object maker = processedMetadata.get("Make");  //제조사 추출
@@ -72,24 +71,13 @@ public class ImageCommandServiceImpl implements ImageCommandService {
                 LocalDate today = LocalDate.now();
                 log.info("givenDate: {},  today: {}", givenDate, today);
 
-                switch (String.valueOf(maker)){
-                    case "samsung": log.info("제조사 samsung"); break;
-                    case "Samsung": log.info("제조사 Samsung"); break;
-                    case "SAMSUNG": log.info("제조사 SAMSUNG"); break;
-                    default:
-                        log.error("제조사가 없어요");
-                        throw new RuntimeException("제조사가 없어요");
-
-                }
 
                 if (givenDate.isEqual(today)) {
                     log.info("찍은 날짜 같음");
-                } else{
+                } else {
 
-                    throw new RuntimeException("오늘 찍은 사진이 아닙니다") ;
+                    throw new RuntimeException("오늘 찍은 사진이 아닙니다");
                 }
-
-
 
 
             } catch (ImageProcessingException e) {
@@ -106,17 +94,17 @@ public class ImageCommandServiceImpl implements ImageCommandService {
             }
 
 
-            InputStream processedInputStream= null;
+            InputStream processedInputStream = null;
             long contentLength = 0;
 
             Optional<Member> member = memberRepository.findById(product.getMember().getId());
             String userName = member.get().getName();
             String email = member.get().getEmail();
 
-            String watermarkText = userName +":"+email+":"+givenDate.toString();
+            String watermarkText = userName + ":" + email + ":" + givenDate.toString();
             BufferedImage watermarkImage = createTextWatermark(watermarkText);
             //워터마크
-            try{
+            try {
                 ByteArrayOutputStream outputStream = new ByteArrayOutputStream(); //워터마크 적용된 파일 객체
                 Thumbnails.of(file.getInputStream())
                         .scale(1.0)
@@ -126,24 +114,14 @@ public class ImageCommandServiceImpl implements ImageCommandService {
                 processedInputStream = new ByteArrayInputStream(outputStream.toByteArray());
 
 
-
-                //로컬에저장
-                FileOutputStream fileOutputStream = new FileOutputStream("C:/Users/rkawk/Desktop/gyoguma_git/image/"+ UUID.randomUUID()+".jpg");
-                outputStream.writeTo(fileOutputStream);
-
                 log.info("워터마크 넣음");
-            }catch (Exception e){
+            } catch (Exception e) {
                 e.printStackTrace();
             }
 
 
-
-
             // S3에 이미지 업로드
-            String imageUrl = amazonImageUploadService.uploadImage(file, processedInputStream,contentLength, "images");
-            //String imageUrl = String.valueOf(java.util.UUID.randomUUID()); //와드 테스트용임
-
-
+            String imageUrl = amazonImageUploadService.uploadImage(file, processedInputStream, contentLength, "images");
 
 
             // 이미지 엔티티 생성 및 저장
@@ -210,8 +188,10 @@ public class ImageCommandServiceImpl implements ImageCommandService {
         // 5. 텍스트 색상 및 투명도 설정
         g2d.setColor(new Color(0, 0, 0, 255)); // 흰색 반투명
 
-        // 4. 폰트 설정
-        g2d.setFont(new Font("Arial", Font.PLAIN, 70));
+
+        // 4. 폰트 설정 (한글 지원 폰트로 변경)
+        g2d.setFont(new Font("Malgun Gothic", Font.PLAIN, 70));
+
         // 텍스트 위치 계산
         FontMetrics fontMetrics = g2d.getFontMetrics();
         int x = (width - fontMetrics.stringWidth(text)) / 2;
@@ -224,5 +204,4 @@ public class ImageCommandServiceImpl implements ImageCommandService {
 
         return watermarkImage;
     }
-
 }
