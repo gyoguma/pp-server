@@ -113,5 +113,5 @@ jobs:
 
             # 상태가 exited인 모든 컨테이너를 제거
             sudo docker rm $(sudo docker ps --filter 'status=exited' -a -q)
-            sudo docker run -d --env-file ~/.env --name market -p 8080:8080 --net ${{secrets.DOCKER_NETWORK}} -e TZ=Asia/Seoul ${{ secrets.DOCKER_USERNAME }}/market:latest
+            sudo docker run -d --name market -p 8080:8080 --net ${{secrets.DOCKER_NETWORK}} -e TZ=Asia/Seoul ${{ secrets.DOCKER_USERNAME }}/market:latest
             sudo docker image prune -a -f
