@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
+    url: jdbc:mysql://${PROD_DB_HOST}:3306/market
+    username: ${PROD_DB_USER}
+    password: ${PROD_DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     show-sql: true
@@ -13,13 +13,13 @@ spring:
       ddl-auto: update
 market:
   jwt:
-    key: ${JWT_KEY} #
-    access:
-      expiration: ${ACCESS_EXP}
-      header: ${ACCESS_HEAD}
-    refresh:
-      expiration: ${REFRESH_EXP}
-      header: ${REFRESH_HEAD}
+    key: ${JWT_KEY}
+#    access:
+#      expiration: ${ACCESS_EXP}
+#      header: ${ACCESS_HEAD}
+#    refresh:
+#      expiration: ${REFRESH_EXP}
+#      header: ${REFRESH_HEAD}
 cloud:
   aws:
     credentials:
