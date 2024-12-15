@@ -39,6 +39,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      # yml 파일 생성( - application-prod.yml
+      - name: make application-prod.yml
+        if: contains(github.ref, 'develop')
+        run: |
+          cd ./src/main/resources
+          touch ./application-prod.yml
+          echo "${{ secrets.YML_PROD }}" > ./application-prod.yml
+        shell: bash
+
       # gradle build - 테스트 없이 gradle 빌드
       - name: Build with Gradle
         run: |
@@ -104,5 +113,5 @@ jobs:
 
             # 상태가 exited인 모든 컨테이너를 제거
             sudo docker rm $(sudo docker ps --filter 'status=exited' -a -q)
-            sudo docker run -d --name market -p 8080:8080 --net ${{secrets.DOCKER_NETWORK}} -e TZ=Asia/Seoul ${{ secrets.DOCKER_USERNAME }}/market:latest
+            sudo docker run -d --env-file ~/.env --name market -p 8080:8080 --net ${{secrets.DOCKER_NETWORK}} -e TZ=Asia/Seoul ${{ secrets.DOCKER_USERNAME }}/market:latest
             sudo docker image prune -a -f
