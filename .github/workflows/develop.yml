@@ -39,6 +39,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      # yml 파일 생성( - application-prod.yml
+      - name: make application-prod.yml
+        if: contains(github.ref, 'develop')
+        run: |
+          cd ./src/main/resources
+          touch ./application-prod.yml
+          echo "${{ secrets.YML_PROD }}" > ./application-prod.yml
+        shell: bash
+
       # gradle build - 테스트 없이 gradle 빌드
       - name: Build with Gradle
         run: |
