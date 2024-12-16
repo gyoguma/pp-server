@@ -1,7 +1,7 @@
 spring:
   data:
     redis:
-      host: localhost
+      host: localhost # 수정 필요
       port: 6379
   security:
     oauth2:
